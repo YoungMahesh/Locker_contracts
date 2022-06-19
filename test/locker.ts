@@ -1,3 +1,5 @@
+import { deployLocker } from "./deploy"
+
 const { expect } = require('chai')
 const { ethers, waffle } = require('hardhat')
 const BN = ethers.BigNumber.from
@@ -11,17 +13,12 @@ describe('Locker Contract', function () {
   const _29Days = currTime + 86400 * 29
   const _31Days = currTime + 86400 * 31
 
-  it('Set User Addresses', async function () {
+  it('Start Locker', async function () {
     const [owner, addr1] = await ethers.getSigners()
     user0 = await owner.getAddress()
     signer0 = owner
     signer1 = addr1
-  })
-
-  it('Deploy Locker Contract', async function () {
-    const Locker = await ethers.getContractFactory('LockerV5')
-    locker = await Locker.deploy()
-    await locker.deployed()
+		locker = await deployLocker()
   })
 
   // ERC20 Lock and Unlock
@@ -50,30 +47,29 @@ describe('Locker Contract', function () {
 
     expect(await tron.balanceOf(locker.address)).to.equal(amount1.mul(2))
 
-    locksArr = await locker.getLockersOfUser(user0)
+    locksArr = await locker.lockersOfUser(user0, 0,2)
 
-    expect(locksArr.length).to.equal(2)
+    expect(await locker.noOfLocksOf(user0)).to.equal(2)
   })
 
   it('ERC20: Non owner could not unlock', async function () {
     await expect(
       locker.connect(signer1).destroyLocker(locksArr[0])
-    ).to.be.revertedWith('02')
+    ).to.be.revertedWith('You are not token owner')
   })
 
   it('ERC20: Owner can unlock', async function () {
-    locksArr = await locker.getLockersOfUser(user0)
+    locksArr = await locker.lockersOfUser(user0, 0, 2)
     await locker.destroyLocker(locksArr[0])
   })
   it('ERC20: Cannot withdraw from destroyed lock', async function () {
-    await expect(locker.destroyLocker(locksArr[0])).to.be.revertedWith('04')
+    await expect(locker.destroyLocker(locksArr[0])).to.be.revertedWith('Tokens are already withdrawn')
   })
   it('ERC20: Cannot unlock if unlocktime in future', async function () {
-    await expect(locker.destroyLocker(locksArr[1])).to.be.revertedWith('03')
+    await expect(locker.destroyLocker(locksArr[1])).to.be.revertedWith('Unlock time is in future')
   })
   it('ERC20: user locksArray size reduced after withdrawl', async function () {
-    locksArr = await locker.getLockersOfUser(user0)
-    expect(locksArr.length).to.equal(1)
+    expect(await locker.noOfLocksOf(user0)).to.equal(1)
   })
 
   // ERC721 Lock and Unlock
@@ -101,8 +97,8 @@ describe('Locker Contract', function () {
     await locker.createLocker(3, devyani.address, 1, 1, currTime)
     await locker.createLocker(3, devyani.address, 2, 1, oneHourLater)
 
-    locksArr = await locker.getLockersOfUser(user0)
-    expect(locksArr.length).to.equal(3)
+    locksArr = await locker.lockersOfUser(user0, 0, 3)
+		expect(await locker.noOfLocksOf(user0)).to.equal(3)
     // index0 is created at the time of erc20 lock, while index1 and index2 are erc721 lock
   })
   it('ERC721: Unlock Tokens', async function () {
@@ -116,11 +112,10 @@ describe('Locker Contract', function () {
     expect(await devyani.ownerOf(1)).to.equal(user0)
   })
   it('ERC721: Cannot withdraw from destroyed lock', async function () {
-    await expect(locker.destroyLocker(locksArr[1])).to.be.revertedWith('04')
+    await expect(locker.destroyLocker(locksArr[1])).to.be.revertedWith('Tokens are already withdrawn')
   })
   it('ERC721: lockArr size reduced after withdrawal', async function () {
-    locksArr = await locker.getLockersOfUser(user0)
-    expect(locksArr.length).to.equal(2)
+    expect(await locker.noOfLocksOf(user0)).to.equal(2)
     // index 0 is erc20 lock, index1 is erc721 lock
   })
 
@@ -148,10 +143,10 @@ describe('Locker Contract', function () {
     await locker.createLocker(4, penguins.address, 1, 4, currTime)
     await locker.createLocker(4, penguins.address, 2, 4, oneHourLater)
 
-    locksArr = await locker.getLockersOfUser(user0)
+    locksArr = await locker.lockersOfUser(user0,0,4)
     // index0 is erc20, index1 is erc721
     // id3, id4 are created at the time of erc721 lock
-    expect(locksArr.length).to.equal(4)
+    expect(await locker.noOfLocksOf(user0)).to.equal(4)
   })
   it('ERC1155: Unlock Tokens', async function () {
     expect(await penguins.balanceOf(locker.address, 1)).to.equal(4)
@@ -163,7 +158,7 @@ describe('Locker Contract', function () {
     expect(await penguins.balanceOf(user0, 1)).to.equal(20)
   })
   it('ERC1155: Cannot withdraw from destroyed lock', async function () {
-    await expect(locker.destroyLocker(locksArr[2])).to.be.revertedWith('04')
+    await expect(locker.destroyLocker(locksArr[2])).to.be.revertedWith('Tokens are already withdrawn')
   })
 
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -189,20 +184,20 @@ describe('Locker Contract', function () {
     })
     expect(await provider.getBalance(locker.address)).to.equal(30000)
 
-    locksArr = await locker.getLockersOfUser(user0)
-    expect(locksArr.length).to.equal(5)
+		expect(await locker.noOfLocksOf(user0)).to.equal(5)
+    locksArr = await locker.lockersOfUser(user0, 0, 5)
   })
   it('ETH: Unlock', async function () {
     await locker.destroyLocker(locksArr[3])
 
     expect(await provider.getBalance(locker.address)).to.equal(15000)
   })
-  it('ETH: Cannot withdrawa from destroyed lock', async function () {
-    await expect(locker.destroyLocker(locksArr[3])).to.be.revertedWith('04')
+  it('ETH: Cannot withdraw from destroyed lock', async function () {
+    await expect(locker.destroyLocker(locksArr[3])).to.be.revertedWith('Tokens are already withdrawn')
   })
   it('4 Locks remaining', async function () {
-    locksArr = await locker.getLockersOfUser(user0)
-    expect(locksArr.length).to.equal(4)
+    expect(await locker.noOfLocksOf(user0)).to.equal(4)
+    locksArr = await locker.lockersOfUser(user0, 0, 4)
     expect(locksArr[0]).to.equal(2)
     expect(locksArr[1]).to.equal(4)
     expect(locksArr[2]).to.equal(6)

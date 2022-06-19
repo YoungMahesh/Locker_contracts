@@ -4,11 +4,19 @@ pragma solidity ^0.8.0;
 interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
+
 abstract contract ERC165 is IERC165 {
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
         return interfaceId == type(IERC165).interfaceId;
     }
 }
+
 interface IERC1155Receiver is IERC165 {
     function onERC1155Received(
         address operator,
@@ -27,12 +35,20 @@ interface IERC1155Receiver is IERC165 {
     ) external returns (bytes4);
 }
 
-
 abstract contract ERC1155Receiver is ERC165, IERC1155Receiver {
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
-        return interfaceId == type(IERC1155Receiver).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165, IERC165)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IERC1155Receiver).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 }
+
 contract ERC1155Holder is ERC1155Receiver {
     function onERC1155Received(
         address,
@@ -43,6 +59,7 @@ contract ERC1155Holder is ERC1155Receiver {
     ) public virtual override returns (bytes4) {
         return this.onERC1155Received.selector;
     }
+
     function onERC1155BatchReceived(
         address,
         address,
