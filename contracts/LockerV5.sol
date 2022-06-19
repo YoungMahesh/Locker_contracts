@@ -64,10 +64,10 @@ contract LockerV5 is ERC1155Holder {
         uint256 _unlockTime
     ) external payable {
         require(_tokenAmount > 0, '05');
-        require(
-            _unlockTime <= block.timestamp + 30 days,
-            'Currently can lock only for 30 days'
-        );
+        // require(
+        //     _unlockTime <= block.timestamp + 180 days,
+        //     'Currently can lock only for 180 days'
+        // );
 
         address _tokenOwner = msg.sender;
         if (_tokenType == 1) {

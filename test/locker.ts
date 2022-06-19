@@ -11,7 +11,7 @@ describe('Locker Contract', function () {
   const currTime = Math.floor(Date.now() / 1000)
   const oneHourLater = currTime + 3600
   const _29Days = currTime + 86400 * 29
-  const _31Days = currTime + 86400 * 31
+  
 
   it('Start Locker', async function () {
     const [owner, addr1] = await ethers.getSigners()
@@ -41,9 +41,11 @@ describe('Locker Contract', function () {
     // lock with unlock-time in past and unlock-time in future
     await locker.createLocker(2, tron.address, 0, amount1, currTime)
     await locker.createLocker(2, tron.address, 0, amount1, _29Days)
-    await expect(
-      locker.createLocker(2, tron.address, 0, amount1, _31Days)
-    ).to.be.revertedWith('Currently can lock only for 30 days')
+
+    // const _31Days = currTime + 86400 * 31
+    // await expect(
+    //   locker.createLocker(2, tron.address, 0, amount1, _31Days)
+    // ).to.be.revertedWith('Currently can lock only for 30 days')
 
     expect(await tron.balanceOf(locker.address)).to.equal(amount1.mul(2))
 
